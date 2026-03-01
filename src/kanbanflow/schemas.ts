@@ -81,3 +81,56 @@ export const CommentSchema = z.object({
 });
 
 export const CommentsResponseSchema = z.array(CommentSchema).describe("Array of comments for a task");
+
+// --- Write operation schemas ---
+
+export const SubTaskInputSchema = z.object({
+    name: z.string().describe("The name of the subtask"),
+    finished: z.boolean().optional().describe("Whether the subtask is finished"),
+    userId: z.string().optional().describe("The user ID assigned to the subtask"),
+});
+
+export const LabelInputSchema = z.object({
+    name: z.string().describe("The label name"),
+    pinned: z.boolean().optional().describe("Whether the label is pinned to the task card"),
+});
+
+export const CreateTaskInputSchema = z.object({
+    name: z.string().describe("The name/title of the task"),
+    columnId: z.string().describe("The ID of the column to create the task in"),
+    swimlaneId: z.string().optional().describe("The ID of the swimlane to place the task in"),
+    position: z.union([z.literal("top"), z.literal("bottom"), z.number()])
+        .optional().describe("Position in the column: 'top', 'bottom', or a numeric index"),
+    description: z.string().optional().describe("The description of the task"),
+    color: z.string().optional().describe("The color of the task (e.g., 'yellow', 'white', 'magenta')"),
+    responsibleUserId: z.string().optional().describe("The user ID of the person responsible"),
+    totalSecondsEstimate: z.number().optional().describe("Estimated seconds for the task"),
+    pointsEstimate: z.number().optional().describe("Estimated points for the task"),
+    groupingDate: z.string().optional().describe("Date for date-grouped columns (YYYY-MM-DD)"),
+    labels: z.array(LabelInputSchema).optional().describe("Labels to assign to the task"),
+    subTasks: z.array(SubTaskInputSchema).optional().describe("Subtasks to create with the task"),
+    collaborators: z.array(TaskCollaboratorSchema).optional().describe("Collaborators to assign"),
+});
+
+export const UpdateTaskInputSchema = z.object({
+    name: z.string().optional().describe("The name/title of the task"),
+    columnId: z.string().optional().describe("The ID of the column to move the task to"),
+    swimlaneId: z.string().optional().describe("The ID of the swimlane to move the task to"),
+    position: z.union([z.literal("top"), z.literal("bottom"), z.number()])
+        .optional().describe("Position in the column: 'top', 'bottom', or a numeric index"),
+    description: z.string().optional().describe("The description of the task"),
+    color: z.string().optional().describe("The color of the task"),
+    responsibleUserId: z.string().nullable().optional().describe("The user ID of the person responsible (null to unassign)"),
+    totalSecondsEstimate: z.number().optional().describe("Estimated seconds for the task"),
+    pointsEstimate: z.number().optional().describe("Estimated points for the task"),
+    groupingDate: z.string().optional().describe("Date for date-grouped columns (YYYY-MM-DD)"),
+    labels: z.array(LabelInputSchema).optional().describe("Labels to assign to the task"),
+    subTasks: z.array(SubTaskInputSchema).optional().describe("Subtasks for the task"),
+    collaborators: z.array(TaskCollaboratorSchema).optional().describe("Collaborators to assign"),
+});
+
+export const CreateTaskResponseSchema = z.object({
+    taskId: z.string().describe("The ID of the created task"),
+}).passthrough();
+
+export const DeleteTaskResponseSchema = z.unknown().describe("Response from deleting a task (may be empty)");

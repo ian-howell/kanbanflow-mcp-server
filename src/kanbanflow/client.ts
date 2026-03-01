@@ -1,7 +1,7 @@
 import { z } from "@zod/zod";
 import { config } from "../config.ts";
-import { BoardResponseSchema, CommentsResponseSchema, TaskSchema, TasksResponseSchema, UsersResponseSchema } from "./schemas.ts";
-import type { Board, CommentsResponse, GetTasksOptions, Task, TasksResponse, UsersResponse } from "./types.ts";
+import { BoardResponseSchema, CommentsResponseSchema, CreateTaskResponseSchema, TaskSchema, TasksResponseSchema, UsersResponseSchema } from "./schemas.ts";
+import type { Board, CommentsResponse, CreateTaskInput, CreateTaskResponse, GetTasksOptions, Task, TasksResponse, UpdateTaskInput, UsersResponse } from "./types.ts";
 
 /**
  * Simple HTTP client for KanbanFlow API
@@ -54,7 +54,11 @@ export class KanbanFlowClient {
             );
         }
 
-        return await response.json();
+        const text = await response.text();
+        if (!text) {
+            return undefined as T;
+        }
+        return JSON.parse(text) as T;
     }
 
     /**
@@ -174,5 +178,42 @@ export class KanbanFlowClient {
             }
             throw error;
         }
+    }
+
+    /**
+     * Creates a new task on the board
+     */
+    async createTask(input: CreateTaskInput): Promise<CreateTaskResponse> {
+        try {
+            const data = await this.request<unknown>("/tasks", {
+                method: "POST",
+                body: JSON.stringify(input),
+            });
+            return CreateTaskResponseSchema.parse(data);
+        } catch (error) {
+            if (error instanceof z.ZodError) {
+                throw new Error(`Invalid response format: ${error.message}`);
+            }
+            throw error;
+        }
+    }
+
+    /**
+     * Updates an existing task (partial update — only provided fields are changed)
+     */
+    async updateTask(taskId: string, input: UpdateTaskInput): Promise<void> {
+        await this.request<undefined>(`/tasks/${taskId}`, {
+            method: "POST",
+            body: JSON.stringify(input),
+        });
+    }
+
+    /**
+     * Deletes a task by ID
+     */
+    async deleteTask(taskId: string): Promise<void> {
+        await this.request<undefined>(`/tasks/${taskId}`, {
+            method: "DELETE",
+        });
     }
 }

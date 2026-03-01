@@ -6,11 +6,16 @@ import {
     BoardSwimlaneSchema,
     CommentSchema,
     CommentsResponseSchema,
+    CreateTaskInputSchema,
+    CreateTaskResponseSchema,
+    LabelInputSchema,
+    SubTaskInputSchema,
     TaskCollaboratorSchema,
     TaskNumberSchema,
     TaskSchema,
     TasksColumnResponseSchema,
     TasksResponseSchema,
+    UpdateTaskInputSchema,
     UserSchema,
     UsersResponseSchema,
 } from "./schemas.ts";
@@ -45,3 +50,10 @@ export interface GetTasksOptions {
     order?: "asc" | "desc";
     includePosition?: boolean;
 }
+
+// Write operation types
+export type CreateTaskInput = z.infer<typeof CreateTaskInputSchema>;
+export type UpdateTaskInput = z.infer<typeof UpdateTaskInputSchema>;
+export type CreateTaskResponse = z.infer<typeof CreateTaskResponseSchema>;
+export type SubTaskInput = z.infer<typeof SubTaskInputSchema>;
+export type LabelInput = z.infer<typeof LabelInputSchema>;

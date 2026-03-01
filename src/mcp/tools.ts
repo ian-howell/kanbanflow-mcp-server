@@ -2,6 +2,7 @@ import { z } from "@zod/zod";
 import { mcpServer } from "./mod.ts";
 import { logger } from "../utils/mod.ts";
 import { KanbanFlowClient } from "../kanbanflow/mod.ts";
+import { CreateTaskInputSchema, UpdateTaskInputSchema } from "../kanbanflow/schemas.ts";
 import { UserResolver } from "./user-resolver.ts";
 
 // Create a shared client instance
@@ -279,6 +280,166 @@ mcpServer.registerTool(
                     {
                         type: "text",
                         text: `Error fetching comments for task ${args.taskId}: ${errorMessage}`,
+                    },
+                ],
+                isError: true,
+            };
+        }
+    },
+);
+
+// --- Write operations ---
+
+mcpServer.registerTool(
+    "createTask",
+    {
+        description: "Create a new task on the Kanbanflow board. Requires at least a name and columnId. Use getBoard first to discover valid column/swimlane IDs.",
+        inputSchema: CreateTaskInputSchema.shape,
+    },
+    async (args) => {
+        try {
+            logger.info("mcp tool invoked", { tool: "createTask", args });
+            const result = await client.createTask(args);
+            logger.info("mcp tool succeeded", {
+                tool: "createTask",
+                taskId: result.taskId,
+                name: args.name,
+                columnId: args.columnId,
+            });
+            return {
+                content: [
+                    {
+                        type: "text",
+                        text: JSON.stringify(result, null, 2),
+                    },
+                ],
+            };
+        } catch (error) {
+            const errorMessage = error instanceof Error ? error.message : String(error);
+            logger.error("mcp tool failed", { tool: "createTask", error: errorMessage, args });
+            return {
+                content: [
+                    {
+                        type: "text",
+                        text: `Error creating task: ${errorMessage}`,
+                    },
+                ],
+                isError: true,
+            };
+        }
+    },
+);
+
+mcpServer.registerTool(
+    "updateTask",
+    {
+        description: "Update an existing task on the Kanbanflow board. Only provided fields are changed (partial update). Can update name, description, color, responsible user, estimates, labels, subtasks, and collaborators.",
+        inputSchema: {
+            taskId: z.string().describe("The ID of the task to update"),
+            ...UpdateTaskInputSchema.shape,
+        },
+    },
+    async (args) => {
+        try {
+            const { taskId, ...updateFields } = args;
+            logger.info("mcp tool invoked", { tool: "updateTask", taskId, fields: Object.keys(updateFields) });
+            await client.updateTask(taskId, updateFields);
+            logger.info("mcp tool succeeded", { tool: "updateTask", taskId });
+            return {
+                content: [
+                    {
+                        type: "text",
+                        text: `Task ${taskId} updated successfully.`,
+                    },
+                ],
+            };
+        } catch (error) {
+            const errorMessage = error instanceof Error ? error.message : String(error);
+            logger.error("mcp tool failed", { tool: "updateTask", error: errorMessage, taskId: args.taskId });
+            return {
+                content: [
+                    {
+                        type: "text",
+                        text: `Error updating task ${args.taskId}: ${errorMessage}`,
+                    },
+                ],
+                isError: true,
+            };
+        }
+    },
+);
+
+mcpServer.registerTool(
+    "deleteTask",
+    {
+        description: "Permanently delete a task from the Kanbanflow board. This action cannot be undone.",
+        inputSchema: {
+            taskId: z.string().describe("The ID of the task to delete"),
+        },
+    },
+    async (args) => {
+        try {
+            logger.info("mcp tool invoked", { tool: "deleteTask", taskId: args.taskId });
+            await client.deleteTask(args.taskId);
+            logger.info("mcp tool succeeded", { tool: "deleteTask", taskId: args.taskId });
+            return {
+                content: [
+                    {
+                        type: "text",
+                        text: `Task ${args.taskId} deleted successfully.`,
+                    },
+                ],
+            };
+        } catch (error) {
+            const errorMessage = error instanceof Error ? error.message : String(error);
+            logger.error("mcp tool failed", { tool: "deleteTask", error: errorMessage, taskId: args.taskId });
+            return {
+                content: [
+                    {
+                        type: "text",
+                        text: `Error deleting task ${args.taskId}: ${errorMessage}`,
+                    },
+                ],
+                isError: true,
+            };
+        }
+    },
+);
+
+mcpServer.registerTool(
+    "moveTask",
+    {
+        description: "Move a task to a different column and/or swimlane on the Kanbanflow board. Use getBoard first to discover valid column/swimlane IDs.",
+        inputSchema: {
+            taskId: z.string().describe("The ID of the task to move"),
+            columnId: z.string().describe("The target column ID to move the task to"),
+            swimlaneId: z.string().optional().describe("The target swimlane ID (optional, keeps current swimlane if omitted)"),
+            position: z.union([z.literal("top"), z.literal("bottom"), z.number()])
+                .optional().describe("Position in the target column: 'top', 'bottom', or a numeric index"),
+        },
+    },
+    async (args) => {
+        try {
+            const { taskId, columnId, swimlaneId, position } = args;
+            logger.info("mcp tool invoked", { tool: "moveTask", taskId, columnId, swimlaneId, position });
+            await client.updateTask(taskId, { columnId, swimlaneId, position });
+            logger.info("mcp tool succeeded", { tool: "moveTask", taskId, columnId });
+            return {
+                content: [
+                    {
+                        type: "text",
+                        text: `Task ${taskId} moved to column ${columnId}${swimlaneId ? ` in swimlane ${swimlaneId}` : ""} successfully.`,
+                    },
+                ],
+            };
+        } catch (error) {
+            const errorMessage = error instanceof Error ? error.message : String(error);
+            logger.error("mcp tool failed", { tool: "moveTask", error: errorMessage, taskId: args.taskId });
+            return {
+                content: [
+                    {
+                        type: "text",
+                        text: `Error moving task ${args.taskId}: ${errorMessage}`,
                     },
                 ],
                 isError: true,
